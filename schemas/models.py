@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List
 
-from sqlalchemy import String, ForeignKey, DateTime
+from sqlalchemy import String, ForeignKey, DateTime, Integer
 from sqlalchemy.orm import Mapped, relationship, mapped_column, Session
 
 from const import base_table_available_places
@@ -18,9 +18,11 @@ class Restaurant(Base):
 class User(Base):
     __tablename__ = 'user'
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    email: Mapped[str] = mapped_column(String, nullable=False)
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
     contact_info: Mapped[str] = mapped_column(String, nullable=False)
+    chat_id: Mapped[int] = mapped_column(Integer)
     orders: Mapped[List["Order"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 

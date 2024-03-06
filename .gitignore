@@ -184,3 +184,4 @@ fabric.properties
 .idea/**
 .idea
 booking_db.sqlite3
+booking_db.sqlite3-journal
