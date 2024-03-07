@@ -46,6 +46,8 @@ class Order(Base):
     user: Mapped["User"] = relationship(back_populates="orders")
     table_id: Mapped[int] = mapped_column(ForeignKey("table.id"))
     table: Mapped["Table"] = relationship(back_populates="order_info")
+    person_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    total_price: Mapped[int] = mapped_column(default=0, nullable=False)
     booking_date_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 

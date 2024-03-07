@@ -8,6 +8,6 @@ router = APIRouter(
 )
 
 
-@router.get("/restaurants")
+@router.get("/")
 async def get_all_restaurants():
     return main_restaurant

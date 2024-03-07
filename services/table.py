@@ -1,46 +1,72 @@
 import math
 from datetime import datetime, date
-from operator import truediv
+from operator import truediv, mod
 
 from fastapi import HTTPException
 from sqlalchemy import select
 
 from const import base_table_available_places
-from models.TableDto import TableBookDto
-from schemas.Receipt import Receipt
+from models.TableDto import TableBookDto, map_to_response, MultiPlyTableBookDto
+from schemas.models import Order
 from schemas.models import session, Table
+
+date_format = '%d.%m.%Y %H:%M'
+
+
+def find_all():
+    response_list = []
+    tables = session.query(Table).all()
+    for table in tables:
+        response_list.append(map_to_response(table))
+    return response_list
 
 
 def book_table(table_dto: TableBookDto):
-    available_table = session.scalars(select(Table).where(Table.id == table_dto.id))
+    available_table = session.get_one(Table, table_dto.id)
 
-    receipt = Receipt(0, table_dto.id, [available_table.id], calculate_table_price(table_dto, available_table),
-                      [table_dto.booked_date_time])
-    # available_table.booked_dates_times.append(table_dto.booked_date_time)
+    order = Order(
+        user_id=table_dto.user_id,
+        table_id=available_table.id,
+        total_price=calculate_table_price(table_dto, available_table),
+        person_count=table_dto.person_count,
+        booking_date_time=datetime.strptime(table_dto.booked_date_time, date_format)
+    )
+    session.add(order)
+    session.commit()
 
-    # else:
-    #     raise HTTPException(status_code=404, detail='Table with id {} not found'.format(table_dto.id))
-
-    return receipt
+    return order
 
 
-def book_tables(table_dto: TableBookDto):
-    available_tables = []
+def book_tables(table_dto: MultiPlyTableBookDto):
     needed_tables_count = math.ceil(truediv(table_dto.person_count, base_table_available_places))
-    available_tables_count = 0
-    db_tables = session.scalars(select(Table).where(Table.view == table_dto.view)).limit(needed_tables_count)
+    available_tables = (session.scalars(
+        select(Table)
+        .join(Order, Table.id == Order.table_id)
+        .where(
+            Table.view == table_dto.view)
+        .filter(Order.booking_date_time != table_dto.booked_date_time)
+        .limit(needed_tables_count)).all())
 
-    if available_tables_count < db_tables.count():
+    if needed_tables_count < len(available_tables):
         raise HTTPException(status_code=404,
                             detail="Free tables with enough space for this date is not available")
 
-    receipt = Receipt(0, table_dto.id, [table.id for table in available_tables], 0,
-                      [table_dto.booked_date_time])
-
+    orders = []
     for table_i in range(len(available_tables)):
-        receipt.total_cost += calculate_table_price(table_dto, available_tables[table_i])
-
-    return receipt
+        order = Order(
+            user_id=table_dto.user_id,
+            table_id=available_tables[table_i].id,
+            total_price=calculate_table_price(table_dto, available_tables[table_i]),
+            booking_date_time=datetime.strptime(table_dto.booked_date_time, date_format)
+        )
+        if table_i != len(available_tables) - 1:
+            order.person_count = mod(table_dto.person_count, available_tables[table_i].available_places)
+        else:
+            order.person_count = available_tables[table_i].available_places
+        orders.append(order)
+    session.add_all(orders)
+    session.commit()
+    return orders
 
 
 def calculate_table_price(table_dto, table):
@@ -52,13 +78,13 @@ def calculate_table_price(table_dto, table):
 def is_weekend(date_str):
     # Checks if a given date string is a weekend.
     # Returns True, if given date string is a weekend, False otherwise.
-    date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+    date_obj = datetime.strptime(date_str, date_format).date()
     return date_obj.weekday() >= 5
 
 
 def checkDateTime(date_str):
     today = date.today()
-    date_obj = datetime.strptime(date_str, '%Y-%m-%d %h-%m').date()
+    date_obj = datetime.strptime(date_str, date_format).date()
     if today <= date_obj:
         return True
     else:

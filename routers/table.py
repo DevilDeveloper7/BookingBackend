@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from models.TableDto import TableBookDto
-from services.table import book_table, book_tables
+from models.TableDto import TableBookDto, MultiPlyTableBookDto
+import services.table as service
 
 router = APIRouter(
     prefix="/tables",
@@ -11,22 +11,17 @@ router = APIRouter(
 
 @router.get("/all")
 async def get_all_tables():
-    pass
+    return service.find_all()
 
 
 @router.post("/book")
 async def book_table(table: TableBookDto):
-    return book_table(table)
+    return service.book_table(table)
 
 
-@router.post("/books")
-async def book_tables(table: TableBookDto):
-    return book_tables(table)
-
-
-@router.get("/test")
-def test():
-    pass
+@router.post("/book/multiply")
+async def book_tables(table: MultiPlyTableBookDto):
+    return service.book_tables(table)
 
 
 @router.get("/{table_id}")
