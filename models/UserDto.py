@@ -11,6 +11,26 @@ class UserCreateDto(BaseModel):
     chat_id: int
 
 
+class UserResponseDto(BaseModel):
+    id: int
+    email: str
+    first_name: str
+    last_name: str
+    contact_info: str
+    chat_id: int
+
+
+def entity_to_response(entity: User):
+    return UserResponseDto(
+        id=entity.id,
+        email=entity.email,
+        first_name=entity.first_name,
+        last_name=entity.last_name,
+        contact_info=entity.contact_info,
+        chat_id=entity.chat_id
+    )
+
+
 def convert_user_dto_to_entity(dto: UserCreateDto):
     return User(
         email=dto.email,

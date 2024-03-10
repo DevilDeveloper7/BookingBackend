@@ -1,4 +1,6 @@
 from fastapi import APIRouter
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 
 import services.user as service
 from models.UserDto import UserCreateDto
@@ -21,7 +23,9 @@ async def find_user_by_email(email: str):
 
 @router.post("/user")
 async def create_user(dto: UserCreateDto):
-    return service.create_user(dto)
+    user = service.create_user(dto)
+    json_data = jsonable_encoder(user)
+    return JSONResponse(content=json_data)
 
 
 @router.put("/user")
@@ -30,5 +34,5 @@ async def update_user(dto: UserCreateDto):
 
 
 @router.delete("/user/{id}")
-async def update_user(id: int):
+async def delete_user(id: int):
     return service.delete_user(id)
