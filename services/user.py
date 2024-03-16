@@ -23,7 +23,7 @@ def find_user_by_email(email: str):
     if user:
         return user
     else:
-        raise HTTPException(status_code=409, detail='User with email = {0} not found"'.format(email))
+        raise HTTPException(status_code=404, detail='User with email = {0} not found"'.format(email))
 
 
 def create_user(dto: UserCreateDto):
@@ -57,3 +57,14 @@ def update_user(dto: UserCreateDto):
 
 def delete_user(user_id: int):
     session.delete(User, user_id)
+
+
+def find_user_by_chat_id(chat_id):
+    user = session.scalar_one(
+        select(User)
+        .filter_by(chat_id=chat_id)
+    )
+    if user:
+        return user
+    else:
+        raise HTTPException(status_code=404, detail='User with chat_id = {0} not found"'.format(chat_id))

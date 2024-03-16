@@ -1,15 +1,13 @@
 import math
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from operator import truediv, mod
 
 from fastapi import HTTPException
 from sqlalchemy import select
 
-from const import base_table_available_places
+from const import base_table_available_places, date_format
 from models.TableDto import TableBookDto, MultiPlyTableBookDto
-from schemas.models import session, Table, Order
-
-date_format = '%d.%m.%Y %H:%M'
+from schemas.models import session, Table, Order, User
 
 
 def create_order(table_dto: TableBookDto):
@@ -20,7 +18,8 @@ def create_order(table_dto: TableBookDto):
         table_id=available_table.id,
         total_price=calculate_table_price(table_dto, available_table),
         person_count=table_dto.person_count,
-        booking_date_time=datetime.strptime(table_dto.booked_date_time, date_format)
+        start_booking_date_time=datetime.strptime(table_dto.booked_date_time, date_format),
+        end_booking_date_time=datetime.strptime(table_dto.booked_date_time, date_format) + timedelta(hours=2)
     )
     session.add(order)
     session.commit()
@@ -29,26 +28,29 @@ def create_order(table_dto: TableBookDto):
 
 
 def create_orders(table_dto: MultiPlyTableBookDto):
+    temp = datetime.strptime(table_dto.booked_date_time, '%d.%m.%Y %H:%M')
     needed_tables_count = math.ceil(truediv(table_dto.person_count, base_table_available_places))
+    filter_subq = session.query(Order.table_id).where(Order.start_booking_date_time <= temp).filter(
+        Order.end_booking_date_time >= temp)
     available_tables = (session.scalars(
         select(Table)
-        .join(Order, Table.id == Order.table_id)
-        .where(
-            Table.view == table_dto.view)
-        .filter(Order.booking_date_time != table_dto.booked_date_time)
-        .limit(needed_tables_count)).all())
+        .where(Table.view == table_dto.view)
+        .filter(Table.id.notin_(filter_subq)))
+                        .all())
 
-    if needed_tables_count < len(available_tables):
+    if needed_tables_count > len(available_tables):
         raise HTTPException(status_code=404,
                             detail="Free tables with enough space for this date is not available")
 
     orders = []
-    for table_i in range(len(available_tables)):
+    for table_i in range(needed_tables_count):
         order = Order(
             user_id=table_dto.user_id,
             table_id=available_tables[table_i].id,
             total_price=calculate_table_price(table_dto, available_tables[table_i]),
-            booking_date_time=datetime.strptime(table_dto.booked_date_time, date_format)
+            start_booking_date_time=datetime.strptime(table_dto.booked_date_time, date_format),
+            end_booking_date_time=datetime.strptime(table_dto.booked_date_time, date_format) + timedelta(hours=2)
+
         )
         if table_i != len(available_tables) - 1:
             order.person_count = mod(table_dto.person_count, available_tables[table_i].available_places)
@@ -56,7 +58,7 @@ def create_orders(table_dto: MultiPlyTableBookDto):
             order.person_count = available_tables[table_i].available_places
         orders.append(order)
     session.add_all(orders)
-    session.commit()
+    session.flush()
     return orders
 
 
@@ -87,8 +89,15 @@ def find_orders_by_user_id_and_topic_id(user_id: int, topic_id: int):
     return orders
 
 
+def find_orders_by_chat_id(chat_id: int):
+    orders = session.scalars(select(Order)
+                             .join(User)
+                             .where(User.chat_id == chat_id)).all()
+    return orders
+
+
 def find_orders_by_user_id(user_id: int):
     orders = session.scalars(select(Order).where(Order.user_id == user_id
-                                                 and Order.booking_date_time < datetime.now()
+                                                 and Order.start_booking_date_time < datetime.now()
                                                  )).all()
     return orders

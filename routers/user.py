@@ -15,6 +15,10 @@ router = APIRouter(
 async def find_user(id: int):
     return service.find_user(id)
 
+@router.get("/user/chat/{chat_id}")
+async def find_user(chat_id: int):
+    return service.find_user_by_chat_id(chat_id)
+
 
 @router.get("/user")
 async def find_user_by_email(email: str):

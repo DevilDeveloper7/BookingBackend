@@ -48,7 +48,8 @@ class Order(Base):
     table: Mapped["Table"] = relationship(back_populates="order_info")
     person_count: Mapped[int] = mapped_column(default=0, nullable=False)
     total_price: Mapped[int] = mapped_column(default=0, nullable=False)
-    booking_date_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    start_booking_date_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    end_booking_date_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 Base.metadata.drop_all(engine)
